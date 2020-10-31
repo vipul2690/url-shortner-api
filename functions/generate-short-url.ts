@@ -45,6 +45,13 @@ export const handler: APIGatewayProxyHandler = async (event: APIGatewayEvent): P
                     message: 'Invalid Request',
                 }),
             };
+        } else {
+            return {
+                statusCode: 500,
+                body: JSON.stringify({
+                    message: 'failure',
+                }),
+            };
         }
     }
 };
