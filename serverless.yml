@@ -210,3 +210,106 @@ resources:
             ProvisionedThroughput:
               ReadCapacityUnits: 2
               WriteCapacityUnits: 1
+    DeploymentBucket:
+      Type: AWS::S3::Bucket
+      DeletionPolicy: Retain
+      Properties:
+        BucketName: motorod-${self:provider.stage}
+        CorsConfiguration:
+          CorsRules:
+            - AllowedMethods:
+                - GET
+              AllowedOrigins:
+                - "*"
+              MaxAge: 3000
+              AllowedHeaders:
+                - "Authorization"
+                - "Content-Length"
+    CloudFrontOriginAccessId:
+      Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
+      Properties:
+        CloudFrontOriginAccessIdentityConfig:
+          Comment: "CloudFront Origin-Access-Identity Config"
+    CloudFrontDistribution:
+      Type: AWS::CloudFront::Distribution
+      Properties:
+        DistributionConfig:
+          Enabled: true
+          Comment: "Motorod distribution"
+          CustomErrorResponses:
+            - ErrorCode: 400
+              ErrorCachingMinTTL: 300
+              ResponseCode: 200
+              ResponsePagePath: "/"
+            - ErrorCode: 403
+              ErrorCachingMinTTL: 300
+              ResponseCode: 200
+              ResponsePagePath: "/"
+            - ErrorCode: 404
+              ErrorCachingMinTTL: 300
+              ResponseCode: 200
+              ResponsePagePath: "/"
+          DefaultCacheBehavior:
+            ForwardedValues:
+              QueryString: false
+            TargetOriginId: "origin1"
+            ViewerProtocolPolicy: "redirect-to-https"
+            AllowedMethods:
+              - "GET"
+              - "HEAD"
+            CachedMethods:
+              - "GET"
+              - "HEAD"
+            Compress: true
+            DefaultTTL: 86400
+            MaxTTL: 31536000
+            MinTTL: 60
+          DefaultRootObject: "index.html"
+          HttpVersion: "http2"
+          IPV6Enabled: true
+          Origins:
+            - DomainName:
+                Fn::GetAtt:
+                  - DeploymentBucket
+                  - RegionalDomainName
+              ConnectionAttempts: 3
+              ConnectionTimeout: 10
+              Id: "origin1"
+              S3OriginConfig:
+                OriginAccessIdentity:
+                  Fn::Join:
+                    - ""
+                    - - "origin-access-identity/cloudfront/"
+                      - Ref: CloudFrontOriginAccessId
+          PriceClass: "PriceClass_100"
+          ViewerCertificate:
+            CloudFrontDefaultCertificate: ${self:custom.CloudFrontCertificate.${opt:stage, self:provider.stage}}
+            AcmCertificateArn: ${self:custom.CertificateARN.${opt:stage, self:provider.stage}}
+            MinimumProtocolVersion: SSLv3
+            SslSupportMethod: sni-only
+    BucketAccessPolicy:
+      Type: AWS::S3::BucketPolicy
+      Properties:
+        Bucket: DeploymentBucket
+        PolicyDocument:
+          Statement:
+            Action:
+              - "s3:GetObject*"
+              - "s3:GetBucket*"
+              - "s3:List*"
+            Effect: Allow
+            Principal:
+              CanonicalUser:
+                Fn::GetAtt:
+                  - CloudFrontOriginAccessId
+                  - S3CanonicalUserId
+            Resource:
+              - Fn::GetAtt:
+                  - DeploymentBucket
+                  - Arn
+              - Fn::Join:
+                  - ""
+                  - - Fn::GetAtt:
+                        - DeploymentBucket
+                        - Arn
+                    - "/*"
