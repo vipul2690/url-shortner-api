@@ -9,6 +9,10 @@ frameworkVersion: "1"
 provider:
   name: aws
   runtime: nodejs12.x
+  stage: ${opt:stage, 'dev'}
+  region: ap-south-1
+  memorySize: 128
+  timeout: 25
 
 plugins:
   - serverless-offline
@@ -16,9 +20,91 @@ plugins:
 
 functions:
   hello:
-    handler: functions/get-short-url.handler
-#resources:
-#  Resources:
+    handler: functions/generate-short-url.handler
+    role: GenerateShortUrlLambdaRole
+    events:
+      - http:
+          method: post
+          path: shortUrls
+          cors: true
+    environment:
+      URL_TABLE: URLTable
+
+resources:
+  Resources:
+    GenerateShortUrlLambdaRole:
+      Type: AWS::IAM::Role
+      Properties:
+        RoleName: ${self:provider.stage}-lambda-generate-short-url-role
+        AssumeRolePolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service:
+                  - lambda.amazonaws.com
+              Action: sts:AssumeRole
+        Policies:
+          - PolicyName: ${self:provider.stage}-lambda-generate-short-url_cloudwatch_policy
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - logs:CreateLogStream
+                    - logs:PutLogEvents
+                  Resource:
+                    - "Fn::Join":
+                        - ":"
+                        - - "arn:aws:logs"
+                          - Ref: "AWS::Region"
+                          - Ref: "AWS::AccountId"
+                          - "log-group:/aws/lambda/${self:provider.stage}-generate-short-url:*"
+          - PolicyName: ${self:provider.stage}-lambda-generate-short-url_dynamodb_policy
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - dynamodb:PutItem
+                  Resource:
+                    - "Fn::Join":
+                        - ":"
+                        - - "arn:aws:dynamodb"
+                          - Ref: "AWS::Region"
+                          - Ref: "AWS::AccountId"
+                          - "table/${self:provider.stage}-urls"
+    URLTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.stage}-urls
+        AttributeDefinitions:
+          - AttributeName: urlId
+            AttributeType: S
+          - AttributeName: shortUrl
+            AttributeType: S
+        KeySchema:
+          - AttributeName: urlId
+            KeyType: HASH
+        GlobalSecondaryIndexes:
+          - IndexName: UrlByShortId
+            KeySchema:
+              - AttributeName: shortUrl
+                KeyType: HASH
+            Projection:
+              ProjectionType: "ALL"
+            ProvisionedThroughput:
+              ReadCapacityUnits: 2
+              WriteCapacityUnits: 1
+          - IndexName: UrlByFullUrl
+            KeySchema:
+              - AttributeName: fullUrl
+                KeyType: HASH
+            Projection:
+              ProjectionType: "ALL"
+            ProvisionedThroughput:
+              ReadCapacityUnits: 2
+              WriteCapacityUnits: 1
 #    NewResource:
 #      Type: AWS::S3::Bucket
 #      Properties:
