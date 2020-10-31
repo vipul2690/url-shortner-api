@@ -11,8 +11,8 @@ class DynamoDBUtil {
         return result;
     };
 
-    getRow = async (params: DynamoDB.DocumentClient.GetItemInput): Promise<DynamoDB.DocumentClient.GetItemOutput> => {
-        const result = await this.dynamoDBClient.get(params).promise();
+    query = async (params: DynamoDB.DocumentClient.QueryInput): Promise<DynamoDB.DocumentClient.QueryOutput> => {
+        const result = await this.dynamoDBClient.query(params).promise();
         return result;
     };
 

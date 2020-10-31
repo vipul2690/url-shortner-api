@@ -39,6 +39,16 @@ functions:
           cors: true
     environment:
       URL_TABLE: URLTable
+  update-url:
+    handler: functions/update-short-url.handler
+    role: UpdateUrlLambdaRole
+    events:
+      - http:
+          method: put
+          path: shortUrls
+          cors: true
+    environment:
+      URL_TABLE: URLTable
 
 resources:
   Resources:
@@ -119,6 +129,49 @@ resources:
                 - Effect: Allow
                   Action:
                     - dynamodb:Scan
+                  Resource:
+                    - "Fn::Join":
+                        - ":"
+                        - - "arn:aws:dynamodb"
+                          - Ref: "AWS::Region"
+                          - Ref: "AWS::AccountId"
+                          - "table/${self:provider.stage}-urls"
+    UpdateUrlLambdaRole:
+      Type: AWS::IAM::Role
+      Properties:
+        RoleName: ${self:provider.stage}-lambda-get-urls-role
+        AssumeRolePolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service:
+                  - lambda.amazonaws.com
+              Action: sts:AssumeRole
+        Policies:
+          - PolicyName: ${self:provider.stage}-lambda-update-url_cloudwatch_policy
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - logs:CreateLogStream
+                    - logs:PutLogEvents
+                  Resource:
+                    - "Fn::Join":
+                        - ":"
+                        - - "arn:aws:logs"
+                          - Ref: "AWS::Region"
+                          - Ref: "AWS::AccountId"
+                          - "log-group:/aws/lambda/${self:provider.stage}-update-url:*"
+          - PolicyName: ${self:provider.stage}-lambda-update-url_dynamodb_policy
+            PolicyDocument:
+              Version: "2012-10-17"
+              Statement:
+                - Effect: Allow
+                  Action:
+                    - dynamodb:UpdateItem
+                    - dynamodb:Query
                   Resource:
                     - "Fn::Join":
                         - ":"
