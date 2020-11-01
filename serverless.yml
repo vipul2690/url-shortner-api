@@ -6,6 +6,10 @@ app: url-shortener
 # Check out our docs for more details
 frameworkVersion: "1"
 
+package:
+  excludeDevDependencies: true
+  individually: true
+
 provider:
   name: aws
   runtime: nodejs12.x
@@ -139,7 +143,7 @@ resources:
     UpdateUrlLambdaRole:
       Type: AWS::IAM::Role
       Properties:
-        RoleName: ${self:provider.stage}-lambda-get-urls-role
+        RoleName: ${self:provider.stage}-lambda-update-url-role
         AssumeRolePolicyDocument:
           Version: "2012-10-17"
           Statement:
@@ -186,11 +190,16 @@ resources:
         AttributeDefinitions:
           - AttributeName: urlId
             AttributeType: S
+          - AttributeName: fullUrl
+            AttributeType: S
           - AttributeName: shortUrl
             AttributeType: S
         KeySchema:
           - AttributeName: urlId
             KeyType: HASH
+        ProvisionedThroughput:
+          ReadCapacityUnits: 2
+          WriteCapacityUnits: 1
         GlobalSecondaryIndexes:
           - IndexName: UrlByShortId
             KeySchema:
@@ -214,7 +223,7 @@ resources:
       Type: AWS::S3::Bucket
       DeletionPolicy: Retain
       Properties:
-        BucketName: motorod-${self:provider.stage}
+        BucketName: url-shortener-ui-${self:provider.stage}
         CorsConfiguration:
           CorsRules:
             - AllowedMethods:
@@ -235,7 +244,7 @@ resources:
       Properties:
         DistributionConfig:
           Enabled: true
-          Comment: "Motorod distribution"
+          Comment: "url-shortener distribution"
           CustomErrorResponses:
             - ErrorCode: 400
               ErrorCachingMinTTL: 300
@@ -282,15 +291,10 @@ resources:
                     - - "origin-access-identity/cloudfront/"
                       - Ref: CloudFrontOriginAccessId
           PriceClass: "PriceClass_100"
-          ViewerCertificate:
-            CloudFrontDefaultCertificate: ${self:custom.CloudFrontCertificate.${opt:stage, self:provider.stage}}
-            AcmCertificateArn: ${self:custom.CertificateARN.${opt:stage, self:provider.stage}}
-            MinimumProtocolVersion: SSLv3
-            SslSupportMethod: sni-only
     BucketAccessPolicy:
       Type: AWS::S3::BucketPolicy
       Properties:
-        Bucket: DeploymentBucket
+        Bucket: !Ref DeploymentBucket
         PolicyDocument:
           Statement:
             Action:
