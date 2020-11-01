@@ -35,6 +35,9 @@ export const handler: APIGatewayProxyHandler = async (event: APIGatewayEvent): P
             await dynamoUtil.insertRow(params);
             return {
                 statusCode: 200,
+                headers: {
+                    'Access-Control-Allow-Origin': '*',
+                },
                 body: JSON.stringify({
                     message: 'success',
                 }),

@@ -22,9 +22,15 @@ plugins:
   - serverless-offline
   - serverless-webpack
 
+custom:
+  webpack:
+    webpackConfig: ./webpack.config.js
+    includeModules: true
+
 functions:
   generate-url:
     handler: functions/generate-short-url.handler
+    name: ${self:provider.stage}-generate-short-url
     role: GenerateShortUrlLambdaRole
     events:
       - http:
@@ -32,9 +38,10 @@ functions:
           path: shortUrls
           cors: true
     environment:
-      URL_TABLE: URLTable
+      URL_TABLE: !Ref URLTable
   get-urls:
     handler: functions/get-urls.handler
+    name: ${self:provider.stage}-get-urls
     role: GetUrlsLambdaRole
     events:
       - http:
@@ -42,9 +49,10 @@ functions:
           path: shortUrls
           cors: true
     environment:
-      URL_TABLE: URLTable
+      URL_TABLE: !Ref URLTable
   update-url:
     handler: functions/update-short-url.handler
+    name: ${self:provider.stage}-update-short-url
     role: UpdateUrlLambdaRole
     events:
       - http:
@@ -52,7 +60,7 @@ functions:
           path: shortUrls
           cors: true
     environment:
-      URL_TABLE: URLTable
+      URL_TABLE: !Ref URLTable
 
 resources:
   Resources:
@@ -98,6 +106,16 @@ resources:
                           - Ref: "AWS::Region"
                           - Ref: "AWS::AccountId"
                           - "table/${self:provider.stage}-urls"
+                - Effect: Allow
+                  Action:
+                    - dynamodb:Query
+                  Resource:
+                    - "Fn::Join":
+                        - ":"
+                        - - "arn:aws:dynamodb"
+                          - Ref: "AWS::Region"
+                          - Ref: "AWS::AccountId"
+                          - "table/${self:provider.stage}-urls/index/*"
     GetUrlsLambdaRole:
       Type: AWS::IAM::Role
       Properties:
@@ -183,6 +201,16 @@ resources:
                           - Ref: "AWS::Region"
                           - Ref: "AWS::AccountId"
                           - "table/${self:provider.stage}-urls"
+                - Effect: Allow
+                  Action:
+                    - dynamodb:Query
+                  Resource:
+                    - "Fn::Join":
+                        - ":"
+                        - - "arn:aws:dynamodb"
+                          - Ref: "AWS::Region"
+                          - Ref: "AWS::AccountId"
+                          - "table/${self:provider.stage}-urls/index/*"
     URLTable:
       Type: AWS::DynamoDB::Table
       Properties:

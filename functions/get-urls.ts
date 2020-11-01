@@ -19,6 +19,9 @@ export const handler: APIGatewayProxyHandler = async (event: APIGatewayEvent): P
         console.log('Successfully fetched data', JSON.stringify(data.Items));
         return {
             statusCode: 200,
+            headers: {
+                'Access-Control-Allow-Origin': '*',
+            },
             body: JSON.stringify({
                 urls: data.Items,
                 count: data.Count,

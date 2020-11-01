@@ -7,7 +7,20 @@ class DynamoDBUtil {
     insertRow = async (
         params: DynamoDB.DocumentClient.PutItemInput,
     ): Promise<DynamoDB.DocumentClient.PutItemOutput> => {
-        const result = await this.dynamoDBClient.put(params).promise();
+        console.log('here');
+        try {
+            const result = await this.dynamoDBClient.put(params).promise();
+            console.log('result: ', result);
+            return result;
+        } catch (err) {
+            console.log('err: ', err);
+        }
+    };
+
+    getRecord = async (
+        params: DynamoDB.DocumentClient.GetItemInput,
+    ): Promise<DynamoDB.DocumentClient.GetItemOutput> => {
+        const result = await this.dynamoDBClient.get(params).promise();
         return result;
     };
 
